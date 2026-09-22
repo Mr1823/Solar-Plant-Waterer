@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+@import "./styles/theme.css";
+
+@layer base {
+  /* Tailwind v4 emits its utilities inside @layer utilities, and an unlayered
+     rule outranks any layered one regardless of specificity — so this reset
+     has to stay in @layer base, or `padding: 0` here silently kills every
+     p-*, m-* and space-y-* utility in the app. */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-bg-base);
+    color: var(--color-text-1);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  /* ── Cards: all equal weight. Idle is not an alert state, so the pump
+     card looks exactly as plain as the other two. ──────────────────────── */
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    padding: 24px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-bg-surface);
+  }
+
+  /* Hero glow, top-left origin, behind the big number. Solar and battery
+     only — emphasis on the stat, not a status indicator. */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .glow-solar::before {
+    background: radial-gradient(220px 200px at 10% 24%, var(--glow-solar), transparent 70%);
+  }
+
+  .glow-battery::before {
+    background: radial-gradient(220px 200px at 10% 24%, var(--glow-battery), transparent 70%);
+  }
+
+  /* ── Type: the display face is for hero numbers only ─────────────────── */
+  .stat-hero {
+    font-family: var(--font-display);
+    font-size: var(--text-hero);
+    line-height: 0.95;
+    font-weight: 520;
+    font-optical-sizing: auto;
+    font-variation-settings: 'opsz' 96, 'SOFT' 0, 'WONK' 0;
+    letter-spacing: -0.02em;
+    color: var(--color-text-1);
+  }
+
+  /* Units stay in the body face so the serif reads as the number itself. */
+  .stat-unit {
+    font-family: var(--font-sans);
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--color-text-2);
+  }
+
+  .label-micro {
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-3);
+  }
+}
+
+/* ── Motion: the live dot and the seedling, nothing else ───────────────── */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-live {
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+@keyframes sprout-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+.is-loading .sprout {
+  animation: sprout-breathe 3s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-live,
+  .is-loading .sprout {
+    animation: none;
+  }
+}
+
+/* ── Chrome ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-status-idle);
+}
+
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+@media (min-width: 640px) {
+  .dashboard-container {
+    padding: 24px;
+  }
+}
