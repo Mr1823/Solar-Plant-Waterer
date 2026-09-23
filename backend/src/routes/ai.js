@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { queryOne, queryAll, runAndSave } from '../db.js';
 import { getInsight } from '../services/groq.js';
-import { getCachedWeather } from './weather.js';
+import { getWeather } from './weather.js';
 
 const router = Router();
 
@@ -28,8 +28,10 @@ router.post('/insight', async (req, res) => {
       return res.json({ insight: cached.insight, cached: true, generated_at: cached.created_at });
     }
 
-    // Generate new insight (include weather if available)
-    const weather = getCachedWeather();
+    // Generate new insight. Weather is fetched (not just read from cache) at
+    // the plant's own coordinates, so the prompt's weather section is real
+    // rather than empty whenever nobody happened to open /api/weather lately.
+    const weather = await getWeather(latest.location_lat, latest.location_lon);
     const insight = await getInsight(latest, recent, weather);
 
     // Cache it

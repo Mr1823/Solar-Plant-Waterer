@@ -37,11 +37,11 @@ export default function readingsRoutes(io) {
           location_name, location_lat, location_lon
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        ts, temperature,
+        ts, temperature ?? null,
         solar_voltage, solar_current, solar_power,
         battery_voltage, battery_current, battery_power, battery_percentage,
         pump_status, pump_last_run || null, pump_next_scheduled_run || null,
-        location_name, location_lat || null, location_lon || null,
+        location_name, location_lat ?? null, location_lon ?? null,
       ]);
 
       const reading = {
@@ -94,8 +94,15 @@ export default function readingsRoutes(io) {
         return res.status(400).json({ error: 'Invalid range. Use 24h, 7d, or 30d.' });
       }
 
+      // Compare as julianday, not as text. Stored timestamps are ISO-8601
+      // ("2026-09-23T05:13:03.687Z") while datetime('now', ?) returns
+      // "2026-09-22 05:31:51" — and since 'T' > ' ', a plain string compare
+      // let every row from the prior calendar day through (a 24h request
+      // returned ~29h). julianday() also copes with the column's own
+      // DEFAULT (datetime('now')) format, so mixed rows still filter right.
+      // It forgoes the timestamp index, which is irrelevant at this scale.
       const rows = queryAll(
-        "SELECT * FROM readings WHERE timestamp >= datetime('now', ?) ORDER BY timestamp ASC",
+        "SELECT * FROM readings WHERE julianday(timestamp) >= julianday('now', ?) ORDER BY timestamp ASC",
         [sqlRange]
       );
 

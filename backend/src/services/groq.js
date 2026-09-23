@@ -1,5 +1,23 @@
 import Groq from 'groq-sdk';
 
+/**
+ * Models are resolved at call time, not hardcoded: this integration broke once
+ * already because `llama-3.1-8b-instant` was retired out from under it and the
+ * feature failed silently. Set GROQ_MODEL to override; the rest act as
+ * fallbacks, so a retired model degrades to a log line instead of a dead card.
+ *
+ * Note some reasoning-capable models (gpt-oss) spend their token budget on a
+ * `reasoning` field and can return empty content — that counts as a failure
+ * here and falls through to the next candidate.
+ */
+const FALLBACK_MODELS = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b'];
+
+function modelCandidates() {
+  const configured = process.env.GROQ_MODEL?.trim();
+  if (!configured) return FALLBACK_MODELS;
+  return [configured, ...FALLBACK_MODELS.filter((m) => m !== configured)];
+}
+
 const SYSTEM_PROMPT = `You are a monitoring assistant for a solar-powered plant watering system. Given sensor data and current weather conditions, give a short, actionable, plain-English status summary or warning. Be concise (2-3 sentences max). Focus on anything unusual or noteworthy — battery health, solar performance, watering schedule status, and weather impact on watering needs. If rain is expected, mention whether the next watering cycle could be skipped. If everything looks normal, say so briefly.`;
 
 let groqClient = null;
@@ -45,15 +63,38 @@ ${weatherData ? `Current Weather (${weatherData.city || 'location'}):
 - Cloud cover: ${weatherData.clouds}%` : 'Weather data not available.'}
   `.trim();
 
-  const completion = await client.chat.completions.create({
-    model: 'llama-3.1-8b-instant',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: dataContext },
-    ],
-    temperature: 0.4,
-    max_tokens: 200,
-  });
+  const candidates = modelCandidates();
+  let lastError = null;
 
-  return completion.choices[0]?.message?.content || 'Unable to generate insight.';
+  for (const model of candidates) {
+    try {
+      const completion = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: dataContext },
+        ],
+        temperature: 0.4,
+        // Headroom: a reasoning model that spends its budget thinking would
+        // otherwise hit the limit before writing a single sentence.
+        max_tokens: 400,
+      });
+
+      const choice = completion.choices?.[0];
+      const text = choice?.message?.content?.trim();
+
+      if (text) {
+        if (model !== candidates[0]) console.warn(`[groq] fell back to ${model}`);
+        return text;
+      }
+
+      console.warn(`[groq] ${model} returned no content (finish_reason=${choice?.finish_reason})`);
+    } catch (err) {
+      console.warn(`[groq] ${model} failed: ${err.message}`);
+      lastError = err;
+    }
+  }
+
+  if (lastError) throw lastError;
+  throw new Error('No Groq model returned an insight');
 }

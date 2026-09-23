@@ -87,7 +87,15 @@ export default function pumpRoutes(io) {
       );
 
       if (command) {
-        runAndSave('UPDATE pump_commands SET acknowledged = 1 WHERE id = ?', [command.id]);
+        // Acknowledge everything up to and including the one we serve, not
+        // just that row. Only the latest intent matters for a pump: leaving
+        // older commands pending meant they came back on the next poll, so
+        // pressing Water Now then Stop delivered "off" and then replayed the
+        // stale "on" — restarting the pump the user had just stopped.
+        runAndSave(
+          'UPDATE pump_commands SET acknowledged = 1 WHERE acknowledged = 0 AND id <= ?',
+          [command.id]
+        );
         res.json({ pending: true, command: command.command, id: command.id });
       } else {
         res.json({ pending: false });
