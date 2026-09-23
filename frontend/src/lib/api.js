@@ -23,6 +23,12 @@ export const deleteSchedule = (id) =>
 export const triggerPump = (action) =>
   request('/pump/manual', { method: 'POST', body: JSON.stringify({ action }) });
 
+// Weather
+export const fetchWeather = (lat, lon) => {
+  const q = lat != null && lon != null ? `?lat=${lat}&lon=${lon}` : '';
+  return request(`/weather${q}`);
+};
+
 // AI
 export const fetchAiInsight = (force = false) =>
   request('/ai/insight', { method: 'POST', body: JSON.stringify({ force }) });

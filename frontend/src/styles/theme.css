@@ -22,6 +22,8 @@
 
   --text-hero: 3.75rem;          /* 60px — hero stats only (band: 56–64) */
   --text-hero--line-height: 0.95;
+  --text-stat: 1.5rem;           /* 24px — the display face's hard floor */
+  --text-stat--line-height: 1;
   --text-micro: 0.625rem;        /* 10px — uppercase labels */
   --text-micro--line-height: 1.2;
 

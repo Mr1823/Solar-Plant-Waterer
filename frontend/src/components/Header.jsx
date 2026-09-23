@@ -1,4 +1,4 @@
-import { Sprout, Sun } from 'lucide-react';
+import { Sprout } from 'lucide-react';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { StatusBadge } from './ui/StatusBadge';
 
@@ -9,7 +9,6 @@ import { StatusBadge } from './ui/StatusBadge';
  */
 export function Header({ reading, isLive }) {
   const locationName = reading?.location_name || 'My Garden';
-  const temperature = reading?.temperature;
 
   let lastSeen = null;
   if (reading?.timestamp) {
@@ -25,7 +24,7 @@ export function Header({ reading, isLive }) {
   const label = status === 'waiting' ? 'Waiting for data' : status === 'live' ? 'Live' : 'Offline';
 
   return (
-    <header className="mb-6 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+    <header className="mb-6 flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-nested border border-border bg-bg-surface">
           <Sprout className="h-5 w-5 text-brand-red" strokeWidth={1.75} />
@@ -36,23 +35,18 @@ export function Header({ reading, isLive }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-5">
-        <div className="flex items-center gap-1.5">
-          <Sun className="h-4 w-4 text-text-3" strokeWidth={1.75} />
-          <span className="text-[13px] font-medium text-text-2">
-            {temperature != null ? `${temperature.toFixed(1)}°C` : '--°C'}
-          </span>
-        </div>
-
-        <div className="flex flex-col items-start gap-1 sm:items-end">
+      {/* Temperatures live in the Conditions card below; the header keeps only
+          the connection state. */}
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div className="flex flex-col items-start gap-1.5 sm:items-end">
           <StatusBadge
             status={status}
             label={label}
             pulse={status === 'live'}
             title={lastSeen ? `Last reading ${lastSeen}` : undefined}
           />
-          {status === 'offline' && lastSeen && (
-            <span className="text-[10px] text-text-3">Last reading {lastSeen}</span>
+          {lastSeen && (
+            <span className="label-micro normal-case">Last reading {lastSeen}</span>
           )}
         </div>
       </div>

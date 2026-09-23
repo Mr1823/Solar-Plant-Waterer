@@ -77,6 +77,19 @@
     color: var(--color-text-1);
   }
 
+  /* Secondary display figures (header stats). Never smaller than this — the
+     display face is reserved for numbers and stops at 24px. */
+  .stat-display {
+    font-family: var(--font-display);
+    font-size: var(--text-stat);
+    line-height: 1;
+    font-weight: 520;
+    font-optical-sizing: auto;
+    font-variation-settings: 'opsz' 48, 'SOFT' 0, 'WONK' 0;
+    letter-spacing: -0.02em;
+    color: var(--color-text-1);
+  }
+
   /* Units stay in the body face so the serif reads as the number itself. */
   .stat-unit {
     font-family: var(--font-sans);

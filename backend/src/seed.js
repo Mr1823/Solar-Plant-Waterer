@@ -72,8 +72,8 @@ async function seed() {
       hour >= 18 ? `${dateStr}T18:00:00.000Z` : hour >= 6 ? `${dateStr}T06:00:00.000Z` : null,
       hour < 6 ? `${dateStr}T06:00:00.000Z` : hour < 18 ? `${dateStr}T18:00:00.000Z` : null,
       'My Garden',
-      17.385,
-      78.4867,
+      9.59,
+      77.95,
     ]);
     insertStmt.step();
     insertStmt.reset();

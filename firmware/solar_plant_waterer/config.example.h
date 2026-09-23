@@ -18,8 +18,8 @@
 // ── Location ─────────────────────────────────────────────────────────────
 // Shown in the dashboard header; lat/lon also drive the weather lookup.
 #define LOCATION_NAME     "My Garden"
-#define LOCATION_LAT      8.96
-#define LOCATION_LON      77.31
+#define LOCATION_LAT      9.59
+#define LOCATION_LON      77.95
 
 // POSIX timezone string — note the sign is INVERTED from UTC offset.
 // India (UTC+5:30) = "IST-5:30"   UK = "GMT0BST,M3.5.0/1,M10.5.0"

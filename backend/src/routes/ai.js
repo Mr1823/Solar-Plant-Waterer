@@ -20,8 +20,16 @@ router.post('/insight', async (req, res) => {
     const recent = queryAll('SELECT * FROM readings ORDER BY id DESC LIMIT 10');
 
     // Check for cached insight (less than 5 minutes old)
+    // created_at is stored in SQLite's own "YYYY-MM-DD HH:MM:SS" UTC form.
+    // Handing that to the browser makes `new Date()` read it as LOCAL time,
+    // so a fresh insight displayed as "5h ago" under IST. Emit ISO 8601 with
+    // an explicit Z instead. (The window comparison below stays in SQLite
+    // format on both sides, which is consistent.)
     const cached = queryOne(
-      "SELECT * FROM ai_insights WHERE created_at >= datetime('now', '-5 minutes') ORDER BY id DESC LIMIT 1"
+      `SELECT insight, strftime('%Y-%m-%dT%H:%M:%SZ', created_at) AS created_at
+         FROM ai_insights
+        WHERE created_at >= datetime('now', '-5 minutes')
+        ORDER BY id DESC LIMIT 1`
     );
 
     if (cached && !req.body.force) {

@@ -1,0 +1,73 @@
+// Postgres schema for the Solar Plant Waterer, translated from the SQLite
+// tables in src/db.js. Column names are preserved via @map so the existing
+// data can be copied across as-is, while the JS side gets camelCase.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 moved connection URLs out of the schema. The CLI reads the direct
+// (session-mode) URL from prisma.config.js; the runtime client connects
+// through the pooled URL via a driver adapter in src/db.js.
+datasource db {
+  provider = "postgresql"
+}
+
+model Reading {
+  id                   Int       @id @default(autoincrement())
+  // Was TEXT holding ISO strings in SQLite. A real timestamptz removes the
+  // whole class of string-comparison bugs that cost us twice: a "24h" range
+  // that returned 29h, and an insight timestamp that displayed as "5h ago".
+  timestamp            DateTime  @default(now()) @db.Timestamptz(3)
+  temperature          Float?
+  solarVoltage         Float?    @map("solar_voltage")
+  solarCurrent         Float?    @map("solar_current")
+  solarPower           Float?    @map("solar_power")
+  batteryVoltage       Float?    @map("battery_voltage")
+  batteryCurrent       Float?    @map("battery_current")
+  batteryPower         Float?    @map("battery_power")
+  batteryPercentage    Float?    @map("battery_percentage")
+  pumpStatus           String    @default("off") @map("pump_status")
+  pumpLastRun          DateTime? @map("pump_last_run") @db.Timestamptz(3)
+  pumpNextScheduledRun DateTime? @map("pump_next_scheduled_run") @db.Timestamptz(3)
+  locationName         String    @default("My Garden") @map("location_name")
+  locationLat          Float?    @map("location_lat")
+  locationLon          Float?    @map("location_lon")
+
+  @@index([timestamp])
+  @@map("readings")
+}
+
+model Schedule {
+  id              Int      @id @default(autoincrement())
+  time            String
+  // Was a JSON string ('[0,1,2]') parsed by hand on every read. A native
+  // int array drops the JSON.parse/stringify round-trip entirely.
+  days            Int[]
+  durationSeconds Int      @default(30) @map("duration_seconds")
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("schedules")
+}
+
+model PumpCommand {
+  id           Int      @id @default(autoincrement())
+  command      String
+  acknowledged Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // The ESP32 poll is "newest unacknowledged", so index the way it queries.
+  @@index([acknowledged, id])
+  @@map("pump_commands")
+}
+
+model AiInsight {
+  id        Int      @id @default(autoincrement())
+  insight   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // The 5-minute cache lookup filters on this.
+  @@index([createdAt])
+  @@map("ai_insights")
+}

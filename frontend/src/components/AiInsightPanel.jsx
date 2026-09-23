@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sparkles, RefreshCw, Loader2 } from 'lucide-react';
 import { Card } from './ui/Card';
 import { CardHeader } from './ui/CardHeader';
 import { EmptyState } from './ui/EmptyState';
 import { fetchAiInsight } from '../lib/api';
+
+const REFRESH_MS = 30 * 60 * 1000;
 
 export function AiInsightPanel() {
   const [insight, setInsight] = useState(null);
@@ -28,6 +30,17 @@ export function AiInsightPanel() {
       setLoading(false);
     }
   };
+
+  // Load on mount so the card has something to say when the dashboard opens,
+  // then refresh every 30 minutes. Both are unforced, so they ride the
+  // server's 5-minute cache: a page reload costs nothing, while the 30-minute
+  // tick always finds it expired and generates a genuinely new reading.
+  useEffect(() => {
+    loadInsight(false);
+    const id = setInterval(() => loadInsight(false), REFRESH_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const timeAgo = generatedAt && insight ? formatTimeAgo(new Date(generatedAt)) : null;
 

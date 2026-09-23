@@ -18,7 +18,7 @@ function modelCandidates() {
   return [configured, ...FALLBACK_MODELS.filter((m) => m !== configured)];
 }
 
-const SYSTEM_PROMPT = `You are a monitoring assistant for a solar-powered plant watering system. Given sensor data and current weather conditions, give a short, actionable, plain-English status summary or warning. Be concise (2-3 sentences max). Focus on anything unusual or noteworthy — battery health, solar performance, watering schedule status, and weather impact on watering needs. If rain is expected, mention whether the next watering cycle could be skipped. If everything looks normal, say so briefly.`;
+const SYSTEM_PROMPT = `You are a monitoring assistant for a solar-powered plant watering system. Given sensor data and current weather conditions, give a short, actionable, plain-English status summary or warning. Be concise (2-3 sentences max). Focus on anything unusual or noteworthy — battery health, solar performance, watering schedule status, and weather impact on watering needs. If rain is expected, mention whether the next watering cycle could be skipped. If everything looks normal, say so briefly. Reply in plain prose only — no Markdown, no bold, no headings, no bullet points.`;
 
 let groqClient = null;
 

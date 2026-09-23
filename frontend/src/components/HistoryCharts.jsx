@@ -9,6 +9,8 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
+const REFRESH_MS = 30 * 60 * 1000;
+
 const RANGES = [
   { key: '24h', label: '24H' },
   { key: '7d', label: '7D' },
@@ -123,12 +125,20 @@ function ChartSection({ title, data, dataKey, color, gradientId, unit, cap, tick
 }
 
 export function HistoryCharts() {
-  const { data, loading, error, range, setRange } = useHistory('24h');
+  const { data, loading, error, range, setRange, refresh } = useHistory('24h');
 
   // The raw request error belongs in the console, not in the card.
   useEffect(() => {
     if (error) console.error('History request failed:', error);
   }, [error]);
+
+  // Re-read the window every 30 minutes so the charts extend themselves. Uses
+  // the hook's own refresh rather than changing useHistory, and holds the
+  // previous render at reduced opacity meanwhile (see isRefetching below).
+  useEffect(() => {
+    const id = setInterval(refresh, REFRESH_MS);
+    return () => clearInterval(id);
+  }, [refresh]);
 
   const chartData = data
     .map((r) => {
