@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { runAndSave, queryAll, queryOne } from '../db.js';
 import { validateSchedule, validateManualPump } from '../middleware/validate.js';
+import { requireAdminPin } from '../middleware/auth.js';
 
 export default function pumpRoutes(io) {
   const router = Router();
@@ -66,7 +67,7 @@ export default function pumpRoutes(io) {
   });
 
   // POST /api/pump/manual — trigger pump on/off
-  router.post('/manual', validateManualPump, (req, res) => {
+  router.post('/manual', requireAdminPin, validateManualPump, (req, res) => {
     try {
       const { action } = req.body;
       runAndSave('INSERT INTO pump_commands (command) VALUES (?)', [action]);

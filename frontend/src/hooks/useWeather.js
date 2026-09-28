@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useRefreshTick } from './useRefreshTick';
 import { fetchWeather } from '../lib/api';
 
-// The server caches for 15 minutes and shares that across every open
-// dashboard, so a 30-minute poll is never more than ~15 minutes stale while
-// costing the free tier almost nothing.
-const REFRESH_MS = 30 * 60 * 1000;
+// Refresh cadence now comes from the shared app scheduler (useRefreshTick),
+// so weather and the AI insight wake the tab together rather than on two
+// independent timers. The server caches 15 minutes across all dashboards.
 
 /**
  * Current conditions at the plant, following the coordinates the ESP32
@@ -32,9 +32,11 @@ export function useWeather(lat, lon, { enabled = true } = {}) {
   useEffect(() => {
     if (!enabled) return undefined;
     load();
-    const id = setInterval(load, REFRESH_MS);
-    return () => clearInterval(id);
   }, [load, enabled]);
+
+  useRefreshTick(() => {
+    if (enabled) load();
+  });
 
   return { weather, refresh: load };
 }

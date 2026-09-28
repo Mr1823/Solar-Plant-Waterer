@@ -1,13 +1,12 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Sparkles, RefreshCw, Loader2 } from 'lucide-react';
 import { Card } from './ui/Card';
 import { CardHeader } from './ui/CardHeader';
 import { EmptyState } from './ui/EmptyState';
 import { fetchAiInsight } from '../lib/api';
+import { useRefreshTick } from '../hooks/useRefreshTick';
 
-const REFRESH_MS = 30 * 60 * 1000;
-
-export function AiInsightPanel() {
+function AiInsightPanelImpl() {
   const [insight, setInsight] = useState(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -37,10 +36,12 @@ export function AiInsightPanel() {
   // tick always finds it expired and generates a genuinely new reading.
   useEffect(() => {
     loadInsight(false);
-    const id = setInterval(() => loadInsight(false), REFRESH_MS);
-    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Shared 30-minute tick. Unforced, so it rides the server's 5-minute
+  // cache: a reload costs nothing, the tick always finds it expired.
+  useRefreshTick(() => loadInsight(false));
 
   const timeAgo = generatedAt && insight ? formatTimeAgo(new Date(generatedAt)) : null;
 
@@ -91,3 +92,7 @@ function formatTimeAgo(date) {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
 }
+
+// Takes no reading props at all, so an incoming soil or pump update can
+// never repaint it.
+export const AiInsightPanel = memo(AiInsightPanelImpl);

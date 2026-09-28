@@ -2,11 +2,14 @@ import { SocketProvider } from './context/SocketContext';
 import { useReadings } from './hooks/useReadings';
 import { useHistory } from './hooks/useHistory';
 import { useWeather } from './hooks/useWeather';
+import { recentSeries } from './lib/trend';
 import { Header } from './components/Header';
 import { WeatherCard } from './components/WeatherCard';
+import { SoilCard } from './components/SoilCard';
 import { SolarCard } from './components/SolarCard';
 import { BatteryCard } from './components/BatteryCard';
 import { PumpCard } from './components/PumpCard';
+import { PumpEnergyCard } from './components/PumpEnergyCard';
 import { HistoryCharts } from './components/HistoryCharts';
 import { AiInsightPanel } from './components/AiInsightPanel';
 
@@ -22,6 +25,9 @@ function Dashboard() {
   const { weather } = useWeather(latest?.location_lat, latest?.location_lon, {
     enabled: !loading,
   });
+
+  // Soil trend for the sparkline, from the same history the charts use.
+  const soilTrend = recentSeries(history, 'soil_moisture', { latest });
 
   if (loading && !latest) {
     return (
@@ -42,15 +48,23 @@ function Dashboard() {
         <WeatherCard weather={weather} reading={latest} />
       </div>
 
-      {/* Single column below 768px; equal-height cards from md up */}
+      {/* Single column below 768px; equal-height cards from md up.
+          Which pump card shows depends on the board: the soil-moisture build
+          reports energy counters and an auto mode, the measured-sensor ESP32
+          build reports schedules. */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch gap-4">
+        {latest?.soil_moisture != null && (
+          <SoilCard soilMoisture={latest.soil_moisture} trend={soilTrend} />
+        )}
         <SolarCard reading={latest} history={history} />
         <BatteryCard reading={latest} history={history} />
-        <PumpCard reading={latest} />
+        {latest?.soil_moisture != null
+          ? <PumpEnergyCard reading={latest} />
+          : <PumpCard reading={latest} />}
       </div>
 
       <div className="mt-4 space-y-4">
-        <HistoryCharts />
+        <HistoryCharts liveReading={latest} />
         <AiInsightPanel />
       </div>
 

@@ -1,12 +1,14 @@
+import { memo } from 'react';
 import { Sun } from 'lucide-react';
 import { Card } from './ui/Card';
 import { CardHeader } from './ui/CardHeader';
 import { MetricRow } from './ui/MetricRow';
 import { StatusBadge } from './ui/StatusBadge';
+import { EstimatedBadge } from './ui/EstimatedBadge';
 import { Sparkline } from './ui/Sparkline';
 import { recentSeries } from '../lib/trend';
 
-export function SolarCard({ reading, history = [] }) {
+function SolarCardImpl({ reading, history = [] }) {
   const voltage = reading?.solar_voltage;
   const current = reading?.solar_current;
   const power = reading?.solar_power;
@@ -18,10 +20,15 @@ export function SolarCard({ reading, history = [] }) {
     <Card glow="glow-solar">
       <CardHeader icon={Sun} title="Solar Panel" iconClass="text-solar">
         {/* Generating is a normal operating state -> green, never brand red. */}
-        <StatusBadge
-          status={isGenerating ? 'generating' : 'idle'}
-          label={isGenerating ? 'Generating' : 'Idle'}
-        />
+        <div className="flex items-center gap-2">
+          {reading?.is_estimated ? (
+            <EstimatedBadge title="Panel rating x (irradiance / 1000) x 0.75, from Open-Meteo sunlight data" />
+          ) : null}
+          <StatusBadge
+            status={isGenerating ? 'generating' : 'idle'}
+            label={isGenerating ? 'Generating' : 'Idle'}
+          />
+        </div>
       </CardHeader>
 
       <div>
@@ -49,10 +56,16 @@ export function SolarCard({ reading, history = [] }) {
         />
       </div>
 
-      <div className="mt-4 border-t border-border pt-2">
-        <MetricRow label="Voltage" value={voltage?.toFixed(1)} unit="V" />
-        <MetricRow label="Current" value={current?.toFixed(2)} unit="A" />
-      </div>
+      {/* Omitted entirely on a board without current sensors — an empty
+          row reading "— V" is just noise. */}
+      {(voltage != null || current != null) && (
+        <div className="mt-4 border-t border-border pt-2">
+          <MetricRow label="Voltage" value={voltage?.toFixed(1)} unit="V" />
+          <MetricRow label="Current" value={current?.toFixed(2)} unit="A" />
+        </div>
+      )}
     </Card>
   );
 }
+
+export const SolarCard = memo(SolarCardImpl);

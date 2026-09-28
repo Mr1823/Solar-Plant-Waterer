@@ -18,7 +18,13 @@ function modelCandidates() {
   return [configured, ...FALLBACK_MODELS.filter((m) => m !== configured)];
 }
 
-const SYSTEM_PROMPT = `You are a monitoring assistant for a solar-powered plant watering system. Given sensor data and current weather conditions, give a short, actionable, plain-English status summary or warning. Be concise (2-3 sentences max). Focus on anything unusual or noteworthy — battery health, solar performance, watering schedule status, and weather impact on watering needs. If rain is expected, mention whether the next watering cycle could be skipped. If everything looks normal, say so briefly. Reply in plain prose only — no Markdown, no bold, no headings, no bullet points.`;
+const SYSTEM_PROMPT = `You are a monitoring assistant for a solar-powered plant watering system. Given sensor data and current weather conditions, give a short, actionable, plain-English status summary or warning. Be concise (2-3 sentences max).
+
+Focus on whatever is most noteworthy: soil moisture against the watering thresholds, battery health, solar performance, pump energy use, and weather impact on watering needs. If rain is expected, say whether the next watering could be skipped. If everything looks normal, say so briefly.
+
+Some values are ESTIMATES, not measurements: on hardware without current sensors, solar power comes from an irradiance model and battery percentage from an energy balance. When the data below is marked as estimated, describe those two as estimates (e.g. "estimated battery around 60%") and do not state them as precise readings. Never invent a value that is marked unavailable.
+
+Reply in plain prose only — no Markdown, no bold, no headings, no bullet points.`;
 
 let groqClient = null;
 
@@ -42,13 +48,48 @@ function getClient() {
 export async function getInsight(latestReading, recentReadings = [], weatherData = null) {
   const client = getClient();
 
+  // Only include what this board actually reported. A NULL column means the
+  // hardware has no such sensor, and printing "null V" invites the model to
+  // narrate a measurement that does not exist.
+  const estimated = latestReading.is_estimated === 1 || latestReading.is_estimated === true;
+  const has = (v) => v !== null && v !== undefined;
+  const lines = [];
+
+  if (has(latestReading.soil_moisture)) {
+    lines.push(`- Soil moisture: ${latestReading.soil_moisture}% (scheduled watering at 07:00 and 18:00 runs only if below 30%)`);
+  }
+  if (has(latestReading.temperature)) lines.push(`- Temperature: ${latestReading.temperature}°C`);
+
+  if (has(latestReading.solar_voltage) && has(latestReading.solar_current)) {
+    lines.push(`- Solar (measured): ${latestReading.solar_voltage}V / ${latestReading.solar_current}A / ${latestReading.solar_power}W`);
+  } else if (has(latestReading.solar_power)) {
+    lines.push(`- Solar power: ${latestReading.solar_power}W (ESTIMATED from irradiance${has(latestReading.irradiance) ? ` ${latestReading.irradiance} W/m2` : ''})`);
+  }
+  if (has(latestReading.solar_energy_today_wh)) {
+    lines.push(`- Solar generated today: ${latestReading.solar_energy_today_wh} Wh (estimated)`);
+  }
+
+  if (has(latestReading.battery_voltage)) {
+    lines.push(`- Battery (measured): ${latestReading.battery_voltage}V / ${latestReading.battery_percentage}% (${latestReading.battery_current > 0 ? 'charging' : 'discharging'})`);
+  } else if (has(latestReading.battery_percentage)) {
+    lines.push(`- Battery: ${latestReading.battery_percentage}% (ESTIMATED via energy balance on a 144 Wh pack)`);
+  }
+
+  lines.push(`- Pump: ${latestReading.pump_status}${has(latestReading.auto_mode) ? ` | mode: ${latestReading.auto_mode ? 'auto' : 'manual'}` : ''}`);
+  if (has(latestReading.pump_energy_today_wh)) {
+    lines.push(`- Pump used today: ${latestReading.pump_energy_today_wh} Wh across ${latestReading.waterings_today ?? 0} watering(s)`);
+  }
+  if (has(latestReading.pump_last_run_sec)) {
+    lines.push(`- Last watering: ${latestReading.pump_last_run_sec}s using ${latestReading.pump_last_run_wh ?? '?'} Wh`);
+  }
+  if (has(latestReading.pump_last_run) || has(latestReading.pump_next_scheduled_run)) {
+    lines.push(`- Schedule: last ${latestReading.pump_last_run || 'never'} | next ${latestReading.pump_next_scheduled_run || 'not scheduled'}`);
+  }
+  lines.push(`- Location: ${latestReading.location_name || 'Unknown'}`);
+
   const dataContext = `
-Current Reading (${latestReading.timestamp}):
-- Temperature: ${latestReading.temperature}°C
-- Solar: ${latestReading.solar_voltage}V / ${latestReading.solar_current}A / ${latestReading.solar_power}W
-- Battery: ${latestReading.battery_voltage}V / ${latestReading.battery_percentage}% (${latestReading.battery_current > 0 ? 'charging' : 'discharging'})
-- Pump: ${latestReading.pump_status} | Last run: ${latestReading.pump_last_run || 'never'} | Next: ${latestReading.pump_next_scheduled_run || 'not scheduled'}
-- Location: ${latestReading.location_name || 'Unknown'}
+Current Reading (${latestReading.timestamp})${estimated ? ' — solar power and battery % on this board are ESTIMATES' : ''}:
+${lines.join('\n')}
 
 ${recentReadings.length > 0 ? `Recent trend (last ${recentReadings.length} readings):
 - Battery range: ${Math.min(...recentReadings.map(r => r.battery_percentage))}% – ${Math.max(...recentReadings.map(r => r.battery_percentage))}%

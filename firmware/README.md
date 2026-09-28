@@ -3,6 +3,13 @@
 Reads the solar/battery/temperature sensors, drives the pump relay, and talks
 to the backend in [`../backend`](../backend).
 
+> **Building on an ESP-12E / ESP8266 instead?** Use
+> [`../solar_plant_waterer_esp12e`](../solar_plant_waterer_esp12e) — same
+> backend contract, but the ESP8266 has only one analog pin, so sensing is
+> done via two I2C INA219 breakouts rather than four ADC pins. That folder's
+> README explains why and covers the bare-module boot-strap wiring a NodeMCU
+> dev board would otherwise handle for you.
+
 ## Setup
 
 1. **Arduino IDE** → Boards Manager → install **esp32** by Espressif (v2.0.0+;

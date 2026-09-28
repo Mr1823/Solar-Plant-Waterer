@@ -1,13 +1,15 @@
+import { memo } from 'react';
 import { BatteryMedium } from 'lucide-react';
 import { Card } from './ui/Card';
 import { CardHeader } from './ui/CardHeader';
 import { MetricRow } from './ui/MetricRow';
 import { ProgressBar } from './ui/ProgressBar';
 import { StatusBadge } from './ui/StatusBadge';
+import { EstimatedBadge } from './ui/EstimatedBadge';
 import { Sparkline } from './ui/Sparkline';
 import { recentSeries } from '../lib/trend';
 
-export function BatteryCard({ reading, history = [] }) {
+function BatteryCardImpl({ reading, history = [] }) {
   const voltage = reading?.battery_voltage;
   const current = reading?.battery_current;
   const power = reading?.battery_power;
@@ -23,10 +25,15 @@ export function BatteryCard({ reading, history = [] }) {
     <Card glow="glow-battery">
       <CardHeader icon={BatteryMedium} title="Battery" iconClass="text-battery">
         {/* Charging is a normal operating state -> green, never brand red. */}
-        <StatusBadge
-          status={isCharging ? 'charging' : 'idle'}
-          label={current == null ? 'No data' : isCharging ? 'Charging' : 'Discharging'}
-        />
+        <div className="flex items-center gap-2">
+          {reading?.is_estimated ? (
+            <EstimatedBadge title="Energy balance on a 144 Wh pack: solar in x 0.85, pump + relay + ESP out" />
+          ) : null}
+          <StatusBadge
+            status={isCharging ? 'charging' : 'idle'}
+            label={current == null ? (reading?.is_estimated ? 'Estimated' : 'No data') : isCharging ? 'Charging' : 'Discharging'}
+          />
+        </div>
       </CardHeader>
 
       <div>
@@ -57,11 +64,27 @@ export function BatteryCard({ reading, history = [] }) {
         />
       </div>
 
-      <div className="mt-4 border-t border-border pt-2">
-        <MetricRow label="Voltage" value={voltage?.toFixed(1)} unit="V" />
-        <MetricRow label="Current" value={current?.toFixed(2)} unit="A" />
-        <MetricRow label="Power" value={power?.toFixed(1)} unit="W" />
-      </div>
+      {/* A board without sensors reports these as NULL; show the derived
+          energy figures instead of three blank rows. */}
+      {voltage != null || current != null ? (
+        <div className="mt-4 border-t border-border pt-2">
+          <MetricRow label="Voltage" value={voltage?.toFixed(1)} unit="V" />
+          <MetricRow label="Current" value={current?.toFixed(2)} unit="A" />
+          <MetricRow label="Power" value={power?.toFixed(1)} unit="W" />
+        </div>
+      ) : pct != null ? (
+        <div className="mt-4 border-t border-border pt-2">
+          <MetricRow label="Stored" value={(pct * 1.44).toFixed(0)} unit="Wh" />
+          <MetricRow label="Capacity" value="144" unit="Wh" />
+          <MetricRow
+            label="Pump time left"
+            value={Math.max(0, ((pct - 50) * 1.44) / 9.35).toFixed(1)}
+            unit="h"
+          />
+        </div>
+      ) : null}
     </Card>
   );
 }
+
+export const BatteryCard = memo(BatteryCardImpl);

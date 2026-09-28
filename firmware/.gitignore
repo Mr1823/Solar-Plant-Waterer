@@ -1,1 +1,4 @@
+# Per-board credentials and config. Templates (*.example.h) are committed;
+# the real files never are.
 config.h
+secrets.h

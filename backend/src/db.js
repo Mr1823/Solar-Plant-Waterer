@@ -49,6 +49,52 @@ export async function initDB(dbPath) {
 
   db.run('CREATE INDEX IF NOT EXISTS idx_readings_timestamp ON readings(timestamp)');
 
+  // Additive schema migration for the soil-moisture hardware.
+  //
+  // These are ADD COLUMN only — nothing is dropped or retyped, so the
+  // existing rows survive untouched and simply carry NULL for the new
+  // fields. That NULL is meaningful, not missing data: a board without
+  // current sensors genuinely has no solar_voltage to report, and the UI
+  // must render "—" rather than a misleading "0 V". Conversely these new
+  // columns are NULL on every reading the measured-sensor ESP32 build
+  // posts, for the same reason.
+  //
+  // is_estimated marks which convention a row follows: 1 = solar_power and
+  // battery_percentage are modelled (irradiance + energy balance), 0/NULL =
+  // directly measured. That flag is what drives the "Estimated" badges.
+  const NEW_READING_COLUMNS = [
+    ['soil_moisture', 'REAL'],            // 0-100 %
+    ['pump_energy_today_wh', 'REAL'],
+    ['pump_energy_total_wh', 'REAL'],
+    ['pump_last_run_sec', 'INTEGER'],
+    ['pump_last_run_wh', 'REAL'],
+    ['waterings_today', 'INTEGER'],
+    ['solar_energy_today_wh', 'REAL'],
+    // Lifetime solar total. Unlike batteryWh / capacity / pumpHoursLeft —
+    // which the dashboard derives from battery_percentage and constants —
+    // this one cannot be reconstructed from anything else we store, so it
+    // has to be a column.
+    ['solar_energy_total_wh', 'REAL'],
+    ['irradiance', 'REAL'],               // W/m² from Open-Meteo
+    ['auto_mode', 'INTEGER'],             // 0/1
+    ['is_estimated', 'INTEGER'],          // 0/1
+  ];
+
+  const existing = new Set();
+  const info = db.exec('PRAGMA table_info(readings)');
+  if (info.length) {
+    const nameIdx = info[0].columns.indexOf('name');
+    for (const row of info[0].values) existing.add(row[nameIdx]);
+  }
+
+  let added = 0;
+  for (const [name, type] of NEW_READING_COLUMNS) {
+    if (existing.has(name)) continue;
+    db.run(`ALTER TABLE readings ADD COLUMN ${name} ${type}`);
+    added++;
+  }
+  if (added) console.log(`🧩 readings: added ${added} column(s) for soil-moisture hardware`);
+
   db.run(`
     CREATE TABLE IF NOT EXISTS schedules (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

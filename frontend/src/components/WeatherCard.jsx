@@ -2,6 +2,7 @@ import {
   Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow,
   Droplets, Moon, Sun, Thermometer, Wind,
 } from 'lucide-react';
+import { memo } from 'react';
 import { Card } from './ui/Card';
 import { CardHeader } from './ui/CardHeader';
 
@@ -54,7 +55,7 @@ function Stat({ icon: Icon, value, unit, label, title }) {
  * differ — the sensor sits in the sun — and that gap is the point of showing
  * them together.
  */
-export function WeatherCard({ weather, reading }) {
+function WeatherCardImpl({ weather, reading }) {
   const Icon = conditionIcon(weather);
   const sensorTemp = reading?.temperature;
   const round = (v) => (typeof v === 'number' ? Math.round(v) : null);
@@ -112,3 +113,7 @@ export function WeatherCard({ weather, reading }) {
     </Card>
   );
 }
+
+// Weather changes on its own 30-minute cadence; sensor readings arriving
+// every 10s must not repaint it.
+export const WeatherCard = memo(WeatherCardImpl);
